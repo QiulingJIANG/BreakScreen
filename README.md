@@ -4,8 +4,9 @@ A fullscreen break reminder that forces you to rest — because you won't do it 
 
 ## Features
 
-- Native desktop app powered by Python + pywebview
-- Fullscreen break reminder (Esc to escape, but we'll judge you)
+- Fullscreen break reminder that jumps in your face — even if you're in another app (Esc to escape, but I'll judge you)
+- Auto mode: Work ends → fullscreen break starts automatically → break ends → next round begins. (Zero clicks needed.)
+- Manual mode: Work ends → click "Start Break" when ready → break ends → click "Start Working" for next round. (You're the boss.)
 
 ## File Structure
 .

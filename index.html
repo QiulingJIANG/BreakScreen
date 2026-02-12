@@ -179,36 +179,53 @@
       color: #ffd7d6;
     }
 
+    /* ===== OVERLAY: break-bg.jpg as full background ===== */
     .overlay {
       position: fixed;
       inset: 0;
       display: none;
       place-items: center;
-      background: linear-gradient(rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.72)),
-                  url("break-bg.jpg") center / cover no-repeat;
       z-index: 999;
       text-align: center;
       padding: 20px;
+      /* Image as full background with light overlay so text is readable */
+      background: url("break-bg.jpg") center / cover no-repeat;
+    }
+
+    .overlay::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 0;
     }
 
     .overlay .card {
+      position: relative;
+      z-index: 1;
       width: min(560px, 100%);
-      background: rgba(0, 0, 0, 0.35);
+      background: rgba(0, 0, 0, 0.45);
       border: 1px solid rgba(255, 255, 255, 0.16);
       border-radius: 16px;
-      padding: 24px;
-      backdrop-filter: blur(4px);
+      padding: 32px;
+      backdrop-filter: blur(6px);
     }
 
     .overlay h2 {
       font-size: clamp(2rem, 7vw, 3.4rem);
-      margin-bottom: 6px;
+      margin-bottom: 10px;
+      color: #fff;
     }
 
     .overlay p {
       font-size: clamp(1rem, 3vw, 1.3rem);
       color: #deecff;
-      margin-bottom: 14px;
+      margin-bottom: 18px;
+    }
+
+    .overlay .timer {
+      color: var(--accent);
+      margin-bottom: 18px;
     }
 
     .hidden {
@@ -237,8 +254,8 @@
         <div class="setting">
           <label for="mode">Mode</label>
           <select id="mode">
-            <option value="auto">Auto</option>
-            <option value="manual">Manual</option>
+            <option value="auto">Auto (auto enter break & next round)</option>
+            <option value="manual">Manual (click to continue)</option>
           </select>
         </div>
       </div>
@@ -265,20 +282,24 @@
         </div>
       </div>
 
+      <!-- Only shown in manual mode when work ends -->
       <button id="actionBtn" class="btn-primary hidden">Start Break</button>
     </section>
   </main>
 
+  <!-- Fullscreen break overlay -->
   <section class="overlay" id="breakOverlay">
     <div class="card">
       <h2 id="overlayTitle">Break Time</h2>
-      <p id="overlayMessage">Breathe, stretch, drink some water.</p>
+      <p id="overlayMessage">Look away from the screen. Your eyes deserve this.</p>
       <h3 class="timer" id="overlayTimer">05:00</h3>
+      <!-- Only shown in manual mode when break ends -->
       <button id="overlayActionBtn" class="btn-primary hidden">Start Working</button>
     </div>
   </section>
 
   <script>
+    /* ===== DOM REFS ===== */
     const workMinutesInput = document.getElementById("workMinutes");
     const breakMinutesInput = document.getElementById("breakMinutes");
     const modeSelect = document.getElementById("mode");
@@ -297,7 +318,8 @@
     const overlayMessage = document.getElementById("overlayMessage");
     const overlayActionBtn = document.getElementById("overlayActionBtn");
 
-    let phase = "idle";
+    /* ===== STATE ===== */
+    let phase = "idle"; // idle | work | pendingBreak | break | awaitManualStart
     let timerSeconds = 25 * 60;
     let breakSeconds = 5 * 60;
     let ticker = null;
@@ -305,39 +327,71 @@
     let completedRounds = 0;
     let totalWorkMinutes = 0;
     let isPaused = false;
+    let originalTitle = "BreakScreen";
+    let flashInterval = null;
 
+    /* ===== HELPERS ===== */
     function format(seconds) {
       const m = Math.floor(seconds / 60).toString().padStart(2, "0");
       const s = (seconds % 60).toString().padStart(2, "0");
       return `${m}:${s}`;
     }
 
+    /* Louder, longer, double-beep alert sound */
     function beep() {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
 
-      osc.type = "sine";
-      osc.frequency.value = 880;
-      gain.gain.value = 0.001;
+      function playTone(startTime) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = 880;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
 
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
+        gain.gain.setValueAtTime(0.001, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.5, startTime + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.6);
 
-      gain.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
-      osc.stop(ctx.currentTime + 0.36);
+        osc.start(startTime);
+        osc.stop(startTime + 0.65);
+      }
+
+      // Double beep: beep — pause — beep
+      playTone(ctx.currentTime);
+      playTone(ctx.currentTime + 0.8);
     }
 
+    /* Title flash to attract attention */
+    function startTitleFlash(msg) {
+      stopTitleFlash();
+      let show = true;
+      flashInterval = setInterval(() => {
+        document.title = show ? msg : originalTitle;
+        show = !show;
+      }, 600);
+    }
+
+    function stopTitleFlash() {
+      if (flashInterval) {
+        clearInterval(flashInterval);
+        flashInterval = null;
+      }
+      document.title = originalTitle;
+    }
+
+    /* pywebview bridge */
     async function callApi(name) {
       if (!window.pywebview || !window.pywebview.api || !window.pywebview.api[name]) {
         return;
       }
       try {
         await window.pywebview.api[name]();
-      } catch (_) {
-      }
+      } catch (_) {}
+    }
+
+    function isAutoMode() {
+      return modeSelect.value === "auto";
     }
 
     function setTimeFromInputs() {
@@ -378,8 +432,11 @@
       overlay.style.display = "none";
     }
 
+    /* ===== CORE FLOW ===== */
+
     function stopAll() {
       clearTicker();
+      stopTitleFlash();
       phase = "idle";
       isPaused = false;
       round = 1;
@@ -393,50 +450,9 @@
       callApi("exit_fullscreen");
     }
 
-    function tickWork() {
-      timerSeconds -= 1;
-      timerDisplay.textContent = format(timerSeconds);
-      if (timerSeconds > 0) {
-        return;
-      }
-      clearTicker();
-      phase = "pendingBreak";
-      totalWorkMinutes += Math.max(1, Number(workMinutesInput.value) || 25);
-      updateStats();
-      beep();
-      callApi("bring_to_front");
-      actionBtn.textContent = "Start Break";
-      actionBtn.classList.remove("hidden");
-    }
-
-    function tickBreak() {
-      breakSeconds -= 1;
-      overlayTimer.textContent = format(breakSeconds);
-      if (breakSeconds > 0) {
-        return;
-      }
-
-      clearTicker();
-      completedRounds += 1;
-      round += 1;
-      updateStats();
-      updateStateText();
-      beep();
-      callApi("exit_fullscreen");
-
-      if (modeSelect.value === "auto") {
-        startWorkSession();
-      } else {
-        phase = "awaitManualStart";
-        overlayTitle.textContent = "Break Finished";
-        overlayMessage.textContent = "Nice. Start the next focus block when ready.";
-        overlayActionBtn.textContent = "Start Working";
-        overlayActionBtn.classList.remove("hidden");
-      }
-    }
-
     function startWorkSession() {
       clearTicker();
+      stopTitleFlash();
       phase = "work";
       isPaused = false;
       overlay.style.display = "none";
@@ -453,13 +469,14 @@
 
     function beginBreak() {
       clearTicker();
+      stopTitleFlash();
       phase = "break";
       isPaused = false;
       actionBtn.classList.add("hidden");
       breakSeconds = Math.max(1, Number(breakMinutesInput.value) || 5) * 60;
 
-      overlayTitle.textContent = "Break Time";
-      overlayMessage.textContent = "Look away from the screen. Your eyes deserve this.";
+      overlayTitle.textContent = "Break Time ☕";
+      overlayMessage.textContent = "Look away from the screen. Stretch. Breathe. Your eyes deserve this.";
       overlayTimer.textContent = format(breakSeconds);
       overlayActionBtn.classList.add("hidden");
       overlay.style.display = "grid";
@@ -469,6 +486,60 @@
       ticker = setInterval(tickBreak, 1000);
     }
 
+    /* ===== TICK FUNCTIONS ===== */
+
+    function tickWork() {
+      timerSeconds -= 1;
+      timerDisplay.textContent = format(timerSeconds);
+      if (timerSeconds > 0) return;
+
+      clearTicker();
+      phase = "pendingBreak";
+      totalWorkMinutes += Math.max(1, Number(workMinutesInput.value) || 25);
+      updateStats();
+      beep();
+      callApi("bring_to_front");
+      startTitleFlash("⏰ Time to rest!");
+
+      if (isAutoMode()) {
+        // Auto mode: go straight to break
+        beginBreak();
+      } else {
+        // Manual mode: wait for user to click
+        actionBtn.textContent = "🧘 Start Break";
+        actionBtn.classList.remove("hidden");
+      }
+    }
+
+    function tickBreak() {
+      breakSeconds -= 1;
+      overlayTimer.textContent = format(breakSeconds);
+      if (breakSeconds > 0) return;
+
+      clearTicker();
+      completedRounds += 1;
+      round += 1;
+      updateStats();
+      updateStateText();
+      beep();
+      callApi("exit_fullscreen");
+
+      if (isAutoMode()) {
+        // Auto mode: start next work round immediately
+        startWorkSession();
+      } else {
+        // Manual mode: wait for user to click
+        phase = "awaitManualStart";
+        overlayTitle.textContent = "Break Finished ✅";
+        overlayMessage.textContent = "Ready for the next round? Click below when you are.";
+        overlayActionBtn.textContent = "💪 Start Working";
+        overlayActionBtn.classList.remove("hidden");
+        startTitleFlash("✅ Break over!");
+      }
+    }
+
+    /* ===== EVENT LISTENERS ===== */
+
     startBtn.addEventListener("click", () => {
       if (phase === "idle" || phase === "awaitManualStart") {
         startWorkSession();
@@ -476,16 +547,13 @@
     });
 
     pauseBtn.addEventListener("click", () => {
-      if (phase !== "work" && phase !== "break") {
-        return;
-      }
+      if (phase !== "work" && phase !== "break") return;
       if (!isPaused) {
         clearTicker();
         isPaused = true;
         pauseBtn.textContent = "Resume";
         return;
       }
-
       isPaused = false;
       pauseBtn.textContent = "Pause";
       if (phase === "work") {
@@ -515,6 +583,7 @@
     workMinutesInput.addEventListener("change", setTimeFromInputs);
     breakMinutesInput.addEventListener("change", setTimeFromInputs);
 
+    /* ===== INIT ===== */
     setTimeFromInputs();
     updateStats();
     updateStateText();
