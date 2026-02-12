@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BreakScreen</title>
+  <style>
+    :root {
+      --bg: #10161f;
+      --panel: #1a2430;
+      --panel-soft: rgba(26, 36, 48, 0.75);
+      --text: #e7edf5;
+      --muted: #9db0c3;
+      --accent: #63d1a1;
+      --accent-strong: #41b384;
+      --warn: #f7c873;
+      --danger: #ef6f6c;
+      --shadow: 0 16px 38px rgba(0, 0, 0, 0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      color: var(--text);
+      background: radial-gradient(circle at 15% 20%, #1b2735, transparent 40%),
+                  radial-gradient(circle at 85% 5%, #243447, transparent 35%),
+                  var(--bg);
+      display: grid;
+      place-items: center;
+      padding: 16px;
+    }
+
+    .app {
+      width: min(980px, 100%);
+      background: var(--panel-soft);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .top {
+      display: grid;
+      gap: 14px;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.2);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .settings {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(140px, 1fr));
+      gap: 10px;
+    }
+
+    .setting {
+      background: var(--panel);
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .setting label {
+      display: block;
+      font-size: 0.84rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    input,
+    select,
+    button {
+      border: 0;
+      outline: none;
+      font-size: 1rem;
+      border-radius: 10px;
+    }
+
+    input,
+    select {
+      width: 100%;
+      background: #121b25;
+      color: var(--text);
+      padding: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .main {
+      display: grid;
+      gap: 14px;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: 1rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .timer {
+      font-size: clamp(3rem, 12vw, 6.5rem);
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .round {
+      color: var(--warn);
+      font-size: 1rem;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(120px, 1fr));
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .stat {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 14px;
+      border-radius: 10px;
+    }
+
+    .stat p:first-child {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+    }
+
+    .stat p:last-child {
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 11px 18px;
+      color: var(--text);
+      background: #233040;
+      cursor: pointer;
+      transition: 0.15s ease;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      background: #2a3a4e;
+    }
+
+    .btn-primary {
+      background: var(--accent-strong);
+      border-color: transparent;
+      color: #072114;
+      font-weight: 700;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent);
+    }
+
+    .btn-danger {
+      background: #4b2322;
+      color: #ffd7d6;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-items: center;
+      background: linear-gradient(rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.72)),
+                  url("break-bg.jpg") center / cover no-repeat;
+      z-index: 999;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .overlay .card {
+      width: min(560px, 100%);
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 16px;
+      padding: 24px;
+      backdrop-filter: blur(4px);
+    }
+
+    .overlay h2 {
+      font-size: clamp(2rem, 7vw, 3.4rem);
+      margin-bottom: 6px;
+    }
+
+    .overlay p {
+      font-size: clamp(1rem, 3vw, 1.3rem);
+      color: #deecff;
+      margin-bottom: 14px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    @media (max-width: 760px) {
+      .settings {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app" id="mainApp">
+    <section class="top">
+      <div class="settings">
+        <div class="setting">
+          <label for="workMinutes">Work duration (minutes)</label>
+          <input id="workMinutes" type="number" min="1" value="25" />
+        </div>
+        <div class="setting">
+          <label for="breakMinutes">Break duration (minutes)</label>
+          <input id="breakMinutes" type="number" min="1" value="5" />
+        </div>
+        <div class="setting">
+          <label for="mode">Mode</label>
+          <select id="mode">
+            <option value="auto">Auto</option>
+            <option value="manual">Manual</option>
+          </select>
+        </div>
+      </div>
+      <div class="controls">
+        <button id="startBtn" class="btn-primary">Start</button>
+        <button id="pauseBtn">Pause</button>
+        <button id="stopBtn" class="btn-danger">Stop</button>
+      </div>
+    </section>
+
+    <section class="main">
+      <p class="status" id="statusLabel">Working</p>
+      <h1 class="timer" id="timerDisplay">25:00</h1>
+      <p class="round" id="roundLabel">Round 1</p>
+
+      <div class="stats">
+        <div class="stat">
+          <p>Completed Rounds</p>
+          <p id="completedRounds">0</p>
+        </div>
+        <div class="stat">
+          <p>Total Work Time Today</p>
+          <p id="totalWorkTime">0m</p>
+        </div>
+      </div>
+
+      <button id="actionBtn" class="btn-primary hidden">Start Break</button>
+    </section>
+  </main>
+
+  <section class="overlay" id="breakOverlay">
+    <div class="card">
+      <h2 id="overlayTitle">Break Time</h2>
+      <p id="overlayMessage">Breathe, stretch, drink some water.</p>
+      <h3 class="timer" id="overlayTimer">05:00</h3>
+      <button id="overlayActionBtn" class="btn-primary hidden">Start Working</button>
+    </div>
+  </section>
+
+  <script>
+    const workMinutesInput = document.getElementById("workMinutes");
+    const breakMinutesInput = document.getElementById("breakMinutes");
+    const modeSelect = document.getElementById("mode");
+    const statusLabel = document.getElementById("statusLabel");
+    const timerDisplay = document.getElementById("timerDisplay");
+    const roundLabel = document.getElementById("roundLabel");
+    const completedRoundsEl = document.getElementById("completedRounds");
+    const totalWorkTimeEl = document.getElementById("totalWorkTime");
+    const startBtn = document.getElementById("startBtn");
+    const pauseBtn = document.getElementById("pauseBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const actionBtn = document.getElementById("actionBtn");
+    const overlay = document.getElementById("breakOverlay");
+    const overlayTimer = document.getElementById("overlayTimer");
+    const overlayTitle = document.getElementById("overlayTitle");
+    const overlayMessage = document.getElementById("overlayMessage");
+    const overlayActionBtn = document.getElementById("overlayActionBtn");
+
+    let phase = "idle";
+    let timerSeconds = 25 * 60;
+    let breakSeconds = 5 * 60;
+    let ticker = null;
+    let round = 1;
+    let completedRounds = 0;
+    let totalWorkMinutes = 0;
+    let isPaused = false;
+
+    function format(seconds) {
+      const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+      const s = (seconds % 60).toString().padStart(2, "0");
+      return `${m}:${s}`;
+    }
+
+    function beep() {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = "sine";
+      osc.frequency.value = 880;
+      gain.gain.value = 0.001;
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+
+      gain.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+      osc.stop(ctx.currentTime + 0.36);
+    }
+
+    async function callApi(name) {
+      if (!window.pywebview || !window.pywebview.api || !window.pywebview.api[name]) {
+        return;
+      }
+      try {
+        await window.pywebview.api[name]();
+      } catch (_) {
+      }
+    }
+
+    function setTimeFromInputs() {
+      const work = Math.max(1, Number(workMinutesInput.value) || 25);
+      const brk = Math.max(1, Number(breakMinutesInput.value) || 5);
+      timerSeconds = work * 60;
+      breakSeconds = brk * 60;
+      timerDisplay.textContent = format(timerSeconds);
+      overlayTimer.textContent = format(breakSeconds);
+    }
+
+    function updateStats() {
+      completedRoundsEl.textContent = String(completedRounds);
+      totalWorkTimeEl.textContent = `${totalWorkMinutes}m`;
+    }
+
+    function updateStateText() {
+      statusLabel.textContent = phase === "break" ? "Break" : "Working";
+      roundLabel.textContent = `Round ${round}`;
+    }
+
+    function clearTicker() {
+      if (ticker) {
+        clearInterval(ticker);
+        ticker = null;
+      }
+    }
+
+    function lockSettings(locked) {
+      workMinutesInput.disabled = locked;
+      breakMinutesInput.disabled = locked;
+      modeSelect.disabled = locked;
+    }
+
+    function resetUiButtons() {
+      actionBtn.classList.add("hidden");
+      overlayActionBtn.classList.add("hidden");
+      overlay.style.display = "none";
+    }
+
+    function stopAll() {
+      clearTicker();
+      phase = "idle";
+      isPaused = false;
+      round = 1;
+      completedRounds = 0;
+      totalWorkMinutes = 0;
+      setTimeFromInputs();
+      updateStats();
+      updateStateText();
+      lockSettings(false);
+      resetUiButtons();
+      callApi("exit_fullscreen");
+    }
+
+    function tickWork() {
+      timerSeconds -= 1;
+      timerDisplay.textContent = format(timerSeconds);
+      if (timerSeconds > 0) {
+        return;
+      }
+      clearTicker();
+      phase = "pendingBreak";
+      totalWorkMinutes += Math.max(1, Number(workMinutesInput.value) || 25);
+      updateStats();
+      beep();
+      callApi("bring_to_front");
+      actionBtn.textContent = "Start Break";
+      actionBtn.classList.remove("hidden");
+    }
+
+    function tickBreak() {
+      breakSeconds -= 1;
+      overlayTimer.textContent = format(breakSeconds);
+      if (breakSeconds > 0) {
+        return;
+      }
+
+      clearTicker();
+      completedRounds += 1;
+      round += 1;
+      updateStats();
+      updateStateText();
+      beep();
+      callApi("exit_fullscreen");
+
+      if (modeSelect.value === "auto") {
+        startWorkSession();
+      } else {
+        phase = "awaitManualStart";
+        overlayTitle.textContent = "Break Finished";
+        overlayMessage.textContent = "Nice. Start the next focus block when ready.";
+        overlayActionBtn.textContent = "Start Working";
+        overlayActionBtn.classList.remove("hidden");
+      }
+    }
+
+    function startWorkSession() {
+      clearTicker();
+      phase = "work";
+      isPaused = false;
+      overlay.style.display = "none";
+      overlayActionBtn.classList.add("hidden");
+      actionBtn.classList.add("hidden");
+      lockSettings(true);
+
+      timerSeconds = Math.max(1, Number(workMinutesInput.value) || 25) * 60;
+      timerDisplay.textContent = format(timerSeconds);
+      updateStateText();
+
+      ticker = setInterval(tickWork, 1000);
+    }
+
+    function beginBreak() {
+      clearTicker();
+      phase = "break";
+      isPaused = false;
+      actionBtn.classList.add("hidden");
+      breakSeconds = Math.max(1, Number(breakMinutesInput.value) || 5) * 60;
+
+      overlayTitle.textContent = "Break Time";
+      overlayMessage.textContent = "Look away from the screen. Your eyes deserve this.";
+      overlayTimer.textContent = format(breakSeconds);
+      overlayActionBtn.classList.add("hidden");
+      overlay.style.display = "grid";
+      updateStateText();
+      callApi("enter_fullscreen");
+
+      ticker = setInterval(tickBreak, 1000);
+    }
+
+    startBtn.addEventListener("click", () => {
+      if (phase === "idle" || phase === "awaitManualStart") {
+        startWorkSession();
+      }
+    });
+
+    pauseBtn.addEventListener("click", () => {
+      if (phase !== "work" && phase !== "break") {
+        return;
+      }
+      if (!isPaused) {
+        clearTicker();
+        isPaused = true;
+        pauseBtn.textContent = "Resume";
+        return;
+      }
+
+      isPaused = false;
+      pauseBtn.textContent = "Pause";
+      if (phase === "work") {
+        ticker = setInterval(tickWork, 1000);
+      } else {
+        ticker = setInterval(tickBreak, 1000);
+      }
+    });
+
+    stopBtn.addEventListener("click", () => {
+      pauseBtn.textContent = "Pause";
+      stopAll();
+    });
+
+    actionBtn.addEventListener("click", () => {
+      if (phase === "pendingBreak") {
+        beginBreak();
+      }
+    });
+
+    overlayActionBtn.addEventListener("click", () => {
+      if (phase === "awaitManualStart") {
+        startWorkSession();
+      }
+    });
+
+    workMinutesInput.addEventListener("change", setTimeFromInputs);
+    breakMinutesInput.addEventListener("change", setTimeFromInputs);
+
+    setTimeFromInputs();
+    updateStats();
+    updateStateText();
+  </script>
+</body>
+</html>
