@@ -10,7 +10,7 @@ A fullscreen break reminder that forces you to rest — because you won't do it 
 
 ## File Structure
 .
-├── app.py
+├── BreakScreen.py
 ├── index.html
 ├── break-bg.jpg
 ├── requirements.txt
