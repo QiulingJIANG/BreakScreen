@@ -6,7 +6,7 @@ A fullscreen break reminder that forces you to rest — because you won't do it 
 
 - Fullscreen break reminder that jumps in your face — even if you're in another app (Esc to escape, but I'll judge you)
 - Auto mode: Work ends → fullscreen break starts automatically → break ends → next round begins. (Zero clicks needed.)
-- Manual mode: Work ends → click "Start Break" when ready → break ends → click "Start Working" for next round. (You're the boss.)
+- Manual mode: Work ends → fullscreen break starts automatically → break ends → click "Start Working" for next round. (You're the boss for resuming.)
 
 ## File Structure
 .

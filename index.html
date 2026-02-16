@@ -283,7 +283,6 @@
       </div>
 
       <!-- Only shown in manual mode when work ends -->
-      <button id="actionBtn" class="btn-primary hidden">Start Break</button>
     </section>
   </main>
 
@@ -311,7 +310,6 @@
     const startBtn = document.getElementById("startBtn");
     const pauseBtn = document.getElementById("pauseBtn");
     const stopBtn = document.getElementById("stopBtn");
-    const actionBtn = document.getElementById("actionBtn");
     const overlay = document.getElementById("breakOverlay");
     const overlayTimer = document.getElementById("overlayTimer");
     const overlayTitle = document.getElementById("overlayTitle");
@@ -319,7 +317,7 @@
     const overlayActionBtn = document.getElementById("overlayActionBtn");
 
     /* ===== STATE ===== */
-    let phase = "idle"; // idle | work | pendingBreak | break | awaitManualStart
+    let phase = "idle"; // idle | work | break | awaitManualStart
     let timerSeconds = 25 * 60;
     let breakSeconds = 5 * 60;
     let ticker = null;
@@ -427,7 +425,6 @@
     }
 
     function resetUiButtons() {
-      actionBtn.classList.add("hidden");
       overlayActionBtn.classList.add("hidden");
       overlay.style.display = "none";
     }
@@ -457,7 +454,6 @@
       isPaused = false;
       overlay.style.display = "none";
       overlayActionBtn.classList.add("hidden");
-      actionBtn.classList.add("hidden");
       lockSettings(true);
 
       timerSeconds = Math.max(1, Number(workMinutesInput.value) || 25) * 60;
@@ -472,7 +468,6 @@
       stopTitleFlash();
       phase = "break";
       isPaused = false;
-      actionBtn.classList.add("hidden");
       breakSeconds = Math.max(1, Number(breakMinutesInput.value) || 5) * 60;
 
       overlayTitle.textContent = "Break Time ☕";
@@ -494,21 +489,12 @@
       if (timerSeconds > 0) return;
 
       clearTicker();
-      phase = "pendingBreak";
       totalWorkMinutes += Math.max(1, Number(workMinutesInput.value) || 25);
       updateStats();
       beep();
       callApi("bring_to_front");
       startTitleFlash("⏰ Time to rest!");
-
-      if (isAutoMode()) {
-        // Auto mode: go straight to break
-        beginBreak();
-      } else {
-        // Manual mode: wait for user to click
-        actionBtn.textContent = "🧘 Start Break";
-        actionBtn.classList.remove("hidden");
-      }
+      beginBreak();
     }
 
     function tickBreak() {
@@ -566,12 +552,6 @@
     stopBtn.addEventListener("click", () => {
       pauseBtn.textContent = "Pause";
       stopAll();
-    });
-
-    actionBtn.addEventListener("click", () => {
-      if (phase === "pendingBreak") {
-        beginBreak();
-      }
     });
 
     overlayActionBtn.addEventListener("click", () => {
